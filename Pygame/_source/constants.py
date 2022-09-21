@@ -4,7 +4,16 @@ SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
 
 TARGET_FPS = 60
 
-GAME_NAME = "Cù lao xác sống"
+GAME_NAME = "POP BALL POP"
+GAME_NAME_TEXT_SIZE = 100
+GAME_NAME_COLOR = (255, 255, 255)
+GAME_NAME_COLOR_OUTLINE = (0, 0, 0)
+
+START_TITLE = "Let's Go"
+CREDIT_TITLE = "Credits"
+QUIT_TITLE = "Quit"
+TITLE_TEXT_SIZE = 50
+TITLE_COLOR = (255, 255, 255)
 
 BLACK_COLOR = (0, 0, 0, 255)
 WHITE_COLOR = (255, 255, 255, 255)
@@ -42,6 +51,7 @@ GRIDS_POS = [
 ]
 
 SOUND_THEME = '../_sounds/Theme.wav'
+BEGIN_THEME = '../_sounds/Begin.wav'
 SOUND_CLICK_THE_BALL = '../_sounds/Click_the_ball.wav'
 SOUND_CLICK_NOTHING = '../_sounds/Click_nothing.wav'
 

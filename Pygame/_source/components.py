@@ -1,6 +1,6 @@
 from enum import Enum
 import pygame as pg
-
+import random
 class Anchor(Enum):
     TOP_LEFT = 0, 
     MID_LEFT = 1,
@@ -11,7 +11,8 @@ class Anchor(Enum):
     TOP_RIGHT = 6,
     MID_RIGHT = 7,
     BOTTOM_RIGHT = 8
-    
+
+ROTATE_FACTOR = [-1, 1]
 class SpriteRenderer (pg.sprite.Sprite):
     def __init__(self, 
                  screen,
@@ -19,7 +20,9 @@ class SpriteRenderer (pg.sprite.Sprite):
                  position : tuple = (0, 0), 
                  scale : tuple = (1, 1), 
                  scale_factor : float = 1, 
-                 anchor : Anchor = Anchor.TOP_LEFT):
+                 anchor : Anchor = Anchor.TOP_LEFT,
+                 angle_delta_min = 1,
+                 angle_delta_max = 4):
         super().__init__()
         self.screen = screen
         self.base_scale = scale 
@@ -46,6 +49,10 @@ class SpriteRenderer (pg.sprite.Sprite):
             self.rect = self.image.get_rect(midright = position)
         elif anchor == Anchor.BOTTOM_RIGHT:
             self.rect = self.image.get_rect(bottomright = position)
+        self.angle = 0
+        self.angle_delta = random.uniform(angle_delta_min, angle_delta_max)
+        self.rotate_factor = ROTATE_FACTOR[random.randint(0, 1)]
+        self.image_copy = pg.transform.rotate(self.image, self.angle).convert_alpha()
     def GatherInput(self):
         pass
     
@@ -59,7 +66,106 @@ class SpriteRenderer (pg.sprite.Sprite):
         pass
     
     def update(self):
-        pass
+        self.angle += self.angle_delta * self.rotate_factor
+        self.image_copy = pg.transform.rotate(self.image, self.angle)
 
     def draw(self):
         self.screen.blit(self.image, self.rect)
+    
+    def draw_with_rotation(self):
+        self.screen.blit(self.image_copy, (self.position[0] - int(self.image_copy.get_width() / 2), self.position[1] - int(self.image_copy.get_height() / 2)))
+
+class TextRenderer(pg.font.Font):
+    def __init__(
+        self,
+        screen,
+        font_path, 
+        position, 
+        string, 
+        size, 
+        fcolor, 
+        anchor,
+        is_outline = False,
+        ocolor = (255, 255, 255),
+        border_radius = 2
+    ):
+        super().__init__(font_path, size)
+        self.screen = screen
+        self.font_path = font_path
+        self.font = pg.font.Font(font_path, size)
+        self.position = position
+        self.text = string
+        self.size = size 
+        self.font_color = fcolor
+        self.outline_color = ocolor
+        self.border_radius = border_radius
+        self.is_outline = is_outline 
+        self.anchor = anchor
+        self.render = self.font.render(self.text, True, self.font_color)
+        self.rect = self.render.get_rect()
+        if self.anchor == Anchor.TOP_LEFT:
+            self.rect.topleft = self.position
+        elif self.anchor == Anchor.MID_LEFT:
+            self.rect.midleft = self.position
+        elif self.anchor == Anchor.BOTTOM_LEFT:
+            self.rect.bottomleft = self.position
+        elif self.anchor == Anchor.TOP_CENTER:
+            self.rect.midtop = self.position
+        elif self.anchor == Anchor.MID_CENTER:
+            self.rect.center = self.position
+        elif self.anchor == Anchor.BOTTOM_CENTER:
+            self.rect.midbottom = self.position
+        elif self.anchor == Anchor.TOP_RIGHT:
+            self.rect.topright = self.position
+        elif self.anchor == Anchor.MID_RIGHT:
+            self.rect.midright = self.position
+        elif self.anchor == Anchor.BOTTOM_RIGHT:
+            self.rect.bottomright = self.position
+        
+    
+    def GatherInput(self):
+        pass
+    
+    def update(self):
+        self.GatherInput()
+        if self.is_outline:
+            self.draw_text_with_outline()
+        else:
+            self.draw_text()
+            
+    def draw_text(self):
+        text = self.font.render(self.text, True, self.font_color)
+        self.screen.blit(text, self.rect)
+    
+    def draw_text_support(self, font_path, position, string, size, fcolor, anchor, window):
+        font = pg.font.Font(font_path, size)
+        text = font.render(string, True, fcolor)
+        textbox = text.get_rect()
+        if anchor == Anchor.TOP_LEFT:
+            textbox.topleft = position
+        elif anchor == Anchor.MID_LEFT:
+            textbox.midleft = position
+        elif anchor == Anchor.BOTTOM_LEFT:
+            textbox.bottomleft = position
+        elif anchor == Anchor.TOP_CENTER:
+            textbox.midtop = position
+        elif anchor == Anchor.MID_CENTER:
+            textbox.center = position
+        elif anchor == Anchor.BOTTOM_CENTER:
+            textbox.midbottom = position
+        elif anchor == Anchor.TOP_RIGHT:
+            textbox.topright = position
+        elif anchor == Anchor.MID_RIGHT:
+            textbox.midright = position
+        elif anchor == Anchor.BOTTOM_RIGHT:
+            textbox.bottomright = position
+        window.blit(text, textbox)
+
+    def draw_text_with_outline(self):
+        self.draw_text_support(self.font_path, (self.position[0] + self.border_radius, self.position[1] - self.border_radius) , self.text, self.size, self.outline_color, self.anchor, self.screen)
+        self.draw_text_support(self.font_path, (self.position[0] + self.border_radius, self.position[1] - self.border_radius) , self.text, self.size, self.outline_color, self.anchor, self.screen)
+        self.draw_text_support(self.font_path, (self.position[0] - self.border_radius, self.position[1] + self.border_radius) , self.text, self.size, self.outline_color, self.anchor, self.screen)
+        self.draw_text_support(self.font_path, (self.position[0] - self.border_radius, self.position[1] + self.border_radius) , self.text, self.size, self.outline_color, self.anchor, self.screen) 
+        self.draw_text_support(self.font_path, (self.position[0] + self.border_radius, self.position[1] + self.border_radius) , self.text, self.size, self.outline_color, self.anchor, self.screen)
+        self.draw_text_support(self.font_path, (self.position[0] - self.border_radius, self.position[1] - self.border_radius) , self.text, self.size, self.outline_color, self.anchor, self.screen) 
+        self.draw_text_support(self.font_path, (self.position[0], self.position[1]), self.text, self.size, self.font_color, self.anchor, self.screen)

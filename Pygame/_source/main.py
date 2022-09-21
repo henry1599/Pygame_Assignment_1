@@ -127,6 +127,66 @@ class Grid(SpriteRenderer):
     def UpdateGrid(self, _pos, _status):
         self.cells_dict.update({_pos : _status})
 
+class ButtonType(Enum):
+    START = 0,
+    CREDIT = 1,
+    QUIT = 2
+
+class ButtonTextRenderer(TextRenderer):
+    def __init__(
+        self,
+        screen,
+        font_path, 
+        position, 
+        string, 
+        size, 
+        fcolor, 
+        anchor,
+        is_outline = False,
+        ocolor = (255, 255, 255),
+        border_radius = 2,
+        type = ButtonType.START
+    ):
+        super().__init__(screen, font_path, position, string, size, fcolor, anchor, is_outline, ocolor, border_radius)
+        self.clicked = False
+        self.type = type
+    
+    def GatherInput(self):
+        if not self.clicked:
+            mouse_presses = pg.mouse.get_pressed()
+            if mouse_presses[0]:
+                if self.rect.collidepoint(pg.mouse.get_pos()):
+                    self.clicked = True
+                    if self.type == ButtonType.START:
+                        OnStartButtonClick()
+                    elif self.type == ButtonType.CREDIT:
+                        OnCreditButtonClick()
+                    elif self.type == ButtonType.QUIT:
+                        OnQuitButtonClick()
+                        
+        # pass
+    
+    def update(self):
+        super().update()
+            
+    def draw_text(self):
+        super().draw_text()
+    
+    def draw_text_support(self, font_path, position, string, size, fcolor, anchor, window):
+        super().draw_text_support(font_path, position, string, size, fcolor, anchor, window)
+
+    def draw_text_with_outline(self):
+        super().draw_text_with_outline()
+
+def OnStartButtonClick():
+    Game.Start()
+
+def OnCreditButtonClick():
+    DisplayCredit()
+
+def OnQuitButtonClick():
+    Game.Exit()
+
 pg.init()
 
 screen = pg.display.set_mode(SCREEN_SIZE)
@@ -137,8 +197,6 @@ ground_size = GetBackgroundScreenScale(BACKGROUND_WIDTH, BACKGROUND_HEIGHT, True
 ground_surface = pg.transform.scale(ground_surface, ground_size)
 ground_position = (0, 0)
 
-game_active = True
-
 
 ball_spawn_timer = pg.USEREVENT + 1
 pg.time.set_timer(ball_spawn_timer, BALL_SPAWN_INTERVAL)
@@ -148,10 +206,9 @@ ball_start_life_time = pg.USEREVENT + 2
 pg.time.set_timer(ball_start_life_time, BALL_LIFE_TIME)
 
 current_score = 0
-score_font = pg.font.Font(FONT_PATH, SCORE_TEXT_SIZE)
-
-pg.mixer.music.load(SOUND_THEME)
-pg.mixer.music.set_volume(0.5)
+font = pg.font.Font(FONT_PATH, SCORE_TEXT_SIZE)
+game_name_font = pg.font.Font(FONT_PATH, GAME_NAME_TEXT_SIZE)
+title_font = pg.font.Font(FONT_PATH, TITLE_TEXT_SIZE)
 
 click_the_ball_sound = pg.mixer.Sound(SOUND_CLICK_THE_BALL)
 click_the_ball_sound.set_volume(0.5)
@@ -233,9 +290,95 @@ def BallSpawner(_ball_list, _delta_time, _mouse_pos):
 def DisplayScore(_score):
     global current_score
     current_score = _score
-    score_surface = score_font.render(f'{SCORE_TEXT} : {current_score} balls', True, SCORE_TEXT_COLOR)
+    score_surface = font.render(f'{SCORE_TEXT} : {current_score} balls', True, SCORE_TEXT_COLOR)
     score_rect = score_surface.get_rect(topleft = SCORE_POSITION)
     screen.blit(score_surface, score_rect)
+
+ball_intro_list = []
+
+def GetBallsForIntro(num, min_size = 0.1, max_size = 0.3):
+    pos_list = []
+    for i in range(num):
+        pos_list.append((random.uniform(0, SCREEN_WIDTH), random.uniform(0, SCREEN_HEIGHT)))        
+    for pos in pos_list:
+        ball = SpriteRenderer(
+            screen = screen,
+            image_path = BALL_PATH, 
+            position = pos, 
+            scale = BALL_SIZE, 
+            scale_factor = random.uniform(min_size, max_size), 
+            anchor = Anchor.MID_CENTER
+        )
+        ball_intro_list.append(ball)
+        
+
+def DisplayIntro():
+    global ball_intro_list
+    for ball_intro in ball_intro_list:
+        ball_intro.update()
+        ball_intro.draw_with_rotation()
+    game_name_text = TextRenderer(
+        screen,
+        FONT_PATH, 
+        (SCREEN_WIDTH / 2, 100), 
+        GAME_NAME, 
+        GAME_NAME_TEXT_SIZE, 
+        GAME_NAME_COLOR, 
+        Anchor.MID_CENTER,
+        True,
+        GAME_NAME_COLOR_OUTLINE, 
+        4
+    )
+    start_title = ButtonTextRenderer(
+        screen,
+        FONT_PATH, 
+        (SCREEN_WIDTH / 2, 350), 
+        START_TITLE, 
+        TITLE_TEXT_SIZE, 
+        TITLE_COLOR, 
+        Anchor.MID_CENTER,
+        True,
+        GAME_NAME_COLOR_OUTLINE, 
+        2,
+        ButtonType.START
+    )
+    credit_title = ButtonTextRenderer(
+        screen,
+        FONT_PATH, 
+        (SCREEN_WIDTH / 2, 450), 
+        CREDIT_TITLE, 
+        TITLE_TEXT_SIZE, 
+        TITLE_COLOR, 
+        Anchor.MID_CENTER,
+        True,
+        GAME_NAME_COLOR_OUTLINE, 
+        2,
+        ButtonType.CREDIT
+    )
+    quit_title = ButtonTextRenderer(
+        screen,
+        FONT_PATH, 
+        (SCREEN_WIDTH / 2, 550), 
+        QUIT_TITLE, 
+        TITLE_TEXT_SIZE, 
+        TITLE_COLOR, 
+        Anchor.MID_CENTER,
+        True,
+        GAME_NAME_COLOR_OUTLINE, 
+        2,
+        ButtonType.QUIT
+    )
+    
+    game_name_text.update()
+    start_title.update()
+    credit_title.update()
+    quit_title.update()
+
+def DisplayCredit():
+    pass
+
+def DisplaySetting():
+    pass
 
 class Gameplay():
     def __init__(self):
@@ -248,17 +391,32 @@ class Gameplay():
         self.clock = pg.time.Clock()
         self.run = True
         self.mouse_pos = (0, 0)
+        self.game_active = False
+    
+    def Awake(self):
+        pg.mixer.music.load(BEGIN_THEME)
+        pg.mixer.music.set_volume(0.5)
+        pg.mixer.music.play(-1)
+    
+    def Start(self):
+        pg.mixer.music.load(SOUND_THEME)
+        pg.mixer.music.set_volume(0.5)
+        pg.mixer.music.play(-1)
+        self.game_active = True
+    
+    def Exit(self):
+        self.run = False
     
     def Run(self):
         global ball_list, particles, screen, current_score
-        pg.mixer.music.play(-1)
+        GetBallsForIntro(5)
         while self.run:
             self.mouse_pos = (0, 0)
             self.mouse_last_frame = pg.mouse.get_pos()
             for event in pg.event.get():
                 if event.type == pg.QUIT:
-                    self.run = False
-                if game_active:
+                    self.Exit()
+                if self.game_active:
                     if event.type == ball_spawn_timer:
                         for _ in range(BALL_EACH_TURN):
                             spawn_pos = grid.GetEmptySlot()
@@ -275,12 +433,12 @@ class Gameplay():
                                     start_life_time = BALL_LIFE_TIME / 1000.0
                                 )
                             ball_list.append(ball)
-                    if event.type == pg.MOUSEBUTTONDOWN:
-                        mouse_presses = pg.mouse.get_pressed()
-                        if mouse_presses[0]:
-                            pg.mixer.Sound.play(click_nothing_sound)
-                            self.is_clicked = True
-                            self.mouse_pos = pg.mouse.get_pos()
+                if event.type == pg.MOUSEBUTTONDOWN:
+                    mouse_presses = pg.mouse.get_pressed()
+                    if mouse_presses[0]:
+                        pg.mixer.Sound.play(click_nothing_sound)
+                        self.is_clicked = True
+                        self.mouse_pos = pg.mouse.get_pos()
                         
             
             # update delta time
@@ -288,7 +446,62 @@ class Gameplay():
             self.delta_time = now - self.old_time
             self.old_time = now
             
-            if game_active:
+            # must-have particles
+            # setup trail particle
+            self.trail_particle_system.update(delta_time=self.delta_time)
+            self.click_particle_system.update(delta_time=self.delta_time)
+            
+            current_mouse = pg.mouse.get_pos()
+            if current_mouse != self.mouse_last_frame:
+                current_mouse = current_mouse[0] + 50, current_mouse[1] + 50
+                for _ in range(8):
+                    self.trail_particle_system.emit(
+                        particlepy.particle.Particle(shape=particlepy.shape.Circle(radius=random.randint(1, 10),
+                                                                                color=(255, 255, 255),
+                                                                                alpha=255),
+                                                    position = current_mouse,
+                                                    velocity = (random.uniform(-50, 50), random.uniform(-50, 50)),
+                                                    delta_radius = 0.4))
+                
+                # color manipulation
+                for particle in self.trail_particle_system.particles:
+                    particle.shape.color = particlepy.math.fade_color(particle=particle,
+                                                                    color=(255, 255, 255, 0),
+                                                                    progress=particle.inverted_progress)
+                # render shapes
+                self.trail_particle_system.make_shape()
+
+                # post shape creation manipulation
+                for particle in self.trail_particle_system.particles:
+                    particle.shape.angle += 5
+
+            
+            
+            if self.is_clicked:
+                for _ in range(1):
+                    self.click_particle_system.emit(
+                        particlepy.particle.Particle(shape=particlepy.shape.Circle(radius=50,
+                                                                                color=(255, 255, 255, 200),
+                                                                                alpha=255),
+                                                    position = pg.mouse.get_pos(),
+                                                    velocity = (0, 0),
+                                                    delta_radius = 3))
+                self.is_clicked = False
+            # click particle color manipulation
+            for particle in self.click_particle_system.particles:
+                particle.shape.alpha = particlepy.math.fade_alpha(particle=particle,
+                                                                alpha = 0,
+                                                                progress=particle.inverted_progress)
+
+            # click particle render shapes
+            self.click_particle_system.make_shape()
+
+            # click particle post shape creation manipulation
+            for particle in self.click_particle_system.particles:
+                particle.shape.angle += 5
+                
+            
+            if self.game_active:
                 for level in LEVEL_CONFIG:
                     if current_score <= level:
                         BALL_EACH_TURN = LEVEL_CONFIG[level][0] # 1s
@@ -301,8 +514,6 @@ class Gameplay():
                 cursor.update(pg.mouse.get_pos())
                 grid.update()
                 
-                self.trail_particle_system.update(delta_time=self.delta_time)
-                self.click_particle_system.update(delta_time=self.delta_time)
                 vfx_explosion.update(delta_time=self.delta_time)
                 vfx_particle_explosion.update(delta_time=self.delta_time)
                 vfx_particle_miss.update(delta_time=self.delta_time)
@@ -333,59 +544,15 @@ class Gameplay():
                 vfx_particle_explosion.render(surface=screen)
                 vfx_particle_miss.render(surface=screen)
                 
-                # setup trail particle
-                current_mouse = pg.mouse.get_pos()
-                if current_mouse != self.mouse_last_frame:
-                    current_mouse = current_mouse[0] + 50, current_mouse[1] + 50
-                    for _ in range(8):
-                        self.trail_particle_system.emit(
-                            particlepy.particle.Particle(shape=particlepy.shape.Circle(radius=random.randint(1, 10),
-                                                                                    color=(255, 255, 255),
-                                                                                    alpha=255),
-                                                        position = current_mouse,
-                                                        velocity = (random.uniform(-50, 50), random.uniform(-50, 50)),
-                                                        delta_radius = 0.4))
-                    
-                    # color manipulation
-                    for particle in self.trail_particle_system.particles:
-                        particle.shape.color = particlepy.math.fade_color(particle=particle,
-                                                                        color=(255, 255, 255, 0),
-                                                                        progress=particle.inverted_progress)
-                    # render shapes
-                    self.trail_particle_system.make_shape()
-
-                    # post shape creation manipulation
-                    for particle in self.trail_particle_system.particles:
-                        particle.shape.angle += 5
-
-                # render trail particles
-                self.trail_particle_system.render(surface=screen)
-                
-                
-                if self.is_clicked:
-                    for _ in range(1):
-                        self.click_particle_system.emit(
-                            particlepy.particle.Particle(shape=particlepy.shape.Circle(radius=50,
-                                                                                    color=(255, 255, 255, 200),
-                                                                                    alpha=255),
-                                                        position = pg.mouse.get_pos(),
-                                                        velocity = (0, 0),
-                                                        delta_radius = 3))
-                    self.is_clicked = False
-                # click particle color manipulation
-                for particle in self.click_particle_system.particles:
-                    particle.shape.alpha = particlepy.math.fade_alpha(particle=particle,
-                                                                    alpha = 0,
-                                                                    progress=particle.inverted_progress)
-
-                # click particle render shapes
-                self.click_particle_system.make_shape()
-
-                # click particle post shape creation manipulation
-                for particle in self.click_particle_system.particles:
-                    particle.shape.angle += 5
-                    
-                self.click_particle_system.render(surface=screen)
+            else:
+                ball_list.clear()
+                screen.blit(ground_surface, ground_position)
+                DisplayIntro()
+                cursor.update(pg.mouse.get_pos())
+            
+            self.click_particle_system.render(surface=screen)
+            # render trail particles
+            self.trail_particle_system.render(surface=screen)
                 
             pg.display.update()
             self.clock.tick(TARGET_FPS)
@@ -394,4 +561,5 @@ class Gameplay():
 
 
 Game = Gameplay()
+Game.Awake()
 Game.Run()
