@@ -130,7 +130,8 @@ class Grid(SpriteRenderer):
 class ButtonType(Enum):
     START = 0,
     CREDIT = 1,
-    QUIT = 2
+    QUIT = 2,
+    BACK = 3
 
 class ButtonTextRenderer(TextRenderer):
     def __init__(
@@ -163,6 +164,8 @@ class ButtonTextRenderer(TextRenderer):
                         OnCreditButtonClick()
                     elif self.type == ButtonType.QUIT:
                         OnQuitButtonClick()
+                    elif self.type == ButtonType.BACK:
+                        OnBackButtonClick()
                         
         # pass
     
@@ -182,10 +185,13 @@ def OnStartButtonClick():
     Game.Start()
 
 def OnCreditButtonClick():
-    DisplayCredit()
+    Game.UpdateState(UIState.CREDIT)
 
 def OnQuitButtonClick():
     Game.Exit()
+
+def OnBackButtonClick():
+    Game.Reload()
 
 pg.init()
 
@@ -290,9 +296,20 @@ def BallSpawner(_ball_list, _delta_time, _mouse_pos):
 def DisplayScore(_score):
     global current_score
     current_score = _score
-    score_surface = font.render(f'{SCORE_TEXT} : {current_score} balls', True, SCORE_TEXT_COLOR)
-    score_rect = score_surface.get_rect(topleft = SCORE_POSITION)
-    screen.blit(score_surface, score_rect)
+    score_text = f'{SCORE_TEXT} : {current_score} balls'
+    score = TextRenderer(
+        screen, 
+        FONT_PATH,
+        SCORE_POSITION,
+        score_text,
+        SCORE_TEXT_SIZE,
+        (255, 255, 255),
+        Anchor.TOP_LEFT,
+        True,
+        (0, 0, 0),
+        2
+    )
+    score.update()
 
 ball_intro_list = []
 
@@ -375,10 +392,51 @@ def DisplayIntro():
     quit_title.update()
 
 def DisplayCredit():
-    pass
+    developers_name = []
+    base_position_x = SCREEN_WIDTH / 2
+    base_position_y = 100
+    for i in range(4):
+        position = (base_position_x, base_position_y + i * 100)
+        name = TextRenderer(
+            screen,
+            FONT_PATH,
+            position,
+            DEVELOPERS_NAME[i],
+            DEVELOPERS_NAME_TEXT_SIZE,
+            DEVELOPERS_NAME_TEXT_COLOR,
+            Anchor.MID_CENTER,
+            True,
+            (0, 0, 0),
+            2
+        )
+        developers_name.append(name)
+        
+    for name in developers_name:
+        name.update()
+        
+    back_button = ButtonTextRenderer(
+        screen,
+        FONT_PATH,
+        (base_position_x, base_position_y + 5 * 100),
+        BACK_TEXT,
+        BACK_TEXT_SIZE,
+        (255, 255, 255),
+        Anchor.MID_CENTER,
+        True,
+        (0, 0, 0),
+        2,
+        ButtonType.BACK
+    )
+    back_button.update()
 
 def DisplaySetting():
-    pass
+    print('setting')
+
+
+class UIState(Enum):
+    INTRO = 0,
+    CREDIT = 1,
+    SETTING = 2
 
 class Gameplay():
     def __init__(self):
@@ -392,6 +450,24 @@ class Gameplay():
         self.run = True
         self.mouse_pos = (0, 0)
         self.game_active = False
+        self.state = UIState.INTRO
+    
+    def Reload(self):
+        self.is_clicked = False
+        self.old_time = time.time()
+        self.delta_time = 0
+        self.clock = pg.time.Clock()
+        self.run = True
+        self.mouse_pos = (0, 0)
+        self.game_active = False
+        self.state = UIState.INTRO
+        self.Awake()
+        self.Run()
+    
+    def UpdateState(self, new_state):
+        if self.state == new_state:
+            return
+        self.state = new_state
     
     def Awake(self):
         pg.mixer.music.load(BEGIN_THEME)
@@ -547,7 +623,12 @@ class Gameplay():
             else:
                 ball_list.clear()
                 screen.blit(ground_surface, ground_position)
-                DisplayIntro()
+                if self.state == UIState.INTRO:
+                    DisplayIntro()
+                elif self.state == UIState.CREDIT:
+                    DisplayCredit()
+                elif self.state == UIState.SETTING:
+                    DisplaySetting()
                 cursor.update(pg.mouse.get_pos())
             
             self.click_particle_system.render(surface=screen)

@@ -15,6 +15,20 @@ QUIT_TITLE = "Quit"
 TITLE_TEXT_SIZE = 50
 TITLE_COLOR = (255, 255, 255)
 
+
+# * CREDIT
+DEVELOPERS_NAME = [
+    "Nguyễn Chí Trung",
+    "Phan Đinh Minh Toàn",
+    "Đoàn Tây Đô",
+    "Lê Trung Hiếu"
+]
+DEVELOPERS_NAME_TEXT_SIZE = 50
+DEVELOPERS_NAME_TEXT_COLOR  = (255, 255, 255)
+
+BACK_TEXT = "Back"
+BACK_TEXT_SIZE = 80
+
 BLACK_COLOR = (0, 0, 0, 255)
 WHITE_COLOR = (255, 255, 255, 255)
 BALL_RAW_COLOR = [BLACK_COLOR, WHITE_COLOR]
