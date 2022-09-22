@@ -53,6 +53,50 @@ class Ball(SpriteRenderer):
     def draw(self):
         self.screen.blit(self.image_copy, (self.position[0] - int(self.image_copy.get_width() / 2), self.position[1] - int(self.image_copy.get_height() / 2)))
 
+class Mine(SpriteRenderer):
+    def __init__(self, 
+                 screen,
+                 image_path : str, 
+                 position : tuple = (0, 0), 
+                 scale : tuple = (1, 1), 
+                 scale_factor : float = 1, 
+                 anchor : Anchor = Anchor.TOP_LEFT,
+                 start_life_time = 1000,
+                 angle_delta_min = 1,
+                 angle_delta_max = 4):
+        super().__init__(screen, image_path, position, scale, scale_factor, anchor)
+        self.clicked = False
+        self.start_life_time = start_life_time
+        self.vfx_explosion = particlepy.particle.ParticleSystem()
+        self.play_particle = False
+        self.angle = 0
+        self.angle_delta = random.uniform(angle_delta_min, angle_delta_max)
+        self.rotate_factor = ROTATE_FACTOR[random.randint(0, 1)]
+        self.image_copy = pg.transform.rotate(self.image, self.angle).convert_alpha()
+        
+    def GatherInput(self, _mouse_pos):
+        if self.rect.collidepoint(_mouse_pos):
+            self.clicked = True
+            self.play_particle = True
+    
+    def ScaleImage(self, base_scale : tuple, scale_factor : float):
+        self.image = pg.transform.scale(self.image, (base_scale[0] * scale_factor, base_scale[1] * scale_factor))
+    
+    def ApplyGravity(self):
+        pass
+    
+    def PlayerAnimation(self):
+        pass
+    
+    def update(self, _delta_time, _mouse_pos):
+        self.GatherInput(_mouse_pos)
+        self.start_life_time -= _delta_time
+        self.angle += self.angle_delta * self.rotate_factor
+        self.image_copy = pg.transform.rotate(self.image, self.angle)
+        
+    def draw(self):
+        self.screen.blit(self.image_copy, (self.position[0] - int(self.image_copy.get_width() / 2), self.position[1] - int(self.image_copy.get_height() / 2)))
+
 class Cursor(SpriteRenderer):
     def __init__(self, 
                  screen,
@@ -208,6 +252,8 @@ ball_spawn_timer = pg.USEREVENT + 1
 pg.time.set_timer(ball_spawn_timer, BALL_SPAWN_INTERVAL)
 ball_list = []
 
+mine_list = []
+
 ball_start_life_time = pg.USEREVENT + 2
 pg.time.set_timer(ball_start_life_time, BALL_LIFE_TIME)
 
@@ -218,6 +264,8 @@ title_font = pg.font.Font(FONT_PATH, TITLE_TEXT_SIZE)
 
 click_the_ball_sound = pg.mixer.Sound(SOUND_CLICK_THE_BALL)
 click_the_ball_sound.set_volume(0.5)
+click_the_mine_sound = pg.mixer.Sound(SOUND_CLICK_THE_MINE)
+click_the_mine_sound.set_volume(0.4)
 
 click_nothing_sound = pg.mixer.Sound(SOUND_CLICK_NOTHING)
 click_nothing_sound.set_volume(0.5)
@@ -244,6 +292,57 @@ grid = Grid(
 vfx_explosion = particlepy.particle.ParticleSystem()
 vfx_particle_explosion = particlepy.particle.ParticleSystem()
 vfx_particle_miss = particlepy.particle.ParticleSystem()
+
+vfx_mine_explosion = particlepy.particle.ParticleSystem()
+vfx_mine_particle_explosion = particlepy.particle.ParticleSystem()
+vfx_mine_particle_miss = particlepy.particle.ParticleSystem()
+
+def MineSpawner(_mine_list, _delta_time, _mouse_pos):
+    global current_score, vfx_mine_explosion, vfx_mine_particle_explosion
+    if _mine_list:
+        for mine in _mine_list:
+            mine.update(_delta_time, _mouse_pos)
+            if mine.clicked:
+                # add score
+                pg.mixer.Sound.play(click_the_mine_sound)
+                grid.UpdateGrid(mine.position, False)
+                current_score -= 5
+                if current_score <= 0:
+                    current_score = 0
+                _mine_list.remove(mine)
+                for _ in range(1):
+                    vfx_mine_explosion.emit(
+                    particlepy.particle.Particle(shape=particlepy.shape.Circle(radius=150,
+                                                                            color=(255, 51, 0, 255),
+                                                                            alpha=255),
+                                                position = mine.position,
+                                                velocity = (0, 0),
+                                                delta_radius = 7))
+                for _ in range(30):
+                    vfx_mine_particle_explosion.emit(
+                    particlepy.particle.Particle(shape=particlepy.shape.Circle(radius=random.randint(25, 35),
+                                                                            color=MINE_RAW_COLOR[random.randint(0, 3)],
+                                                                            alpha=255),
+                                                position = mine.position,
+                                                velocity = (random.uniform(-200, 200), random.uniform(-200, 200)),
+                                                delta_radius = 0.5))
+            elif mine.start_life_time <= 0:
+                # minus score
+                for _ in range(1):
+                    vfx_mine_particle_miss.emit(
+                    particlepy.particle.Particle(shape=particlepy.shape.Rect(radius=130,
+                                                                            color=(0, 255, 0, 255),
+                                                                            alpha=255),
+                                                position = mine.position,
+                                                velocity = (0, 0),
+                                                delta_radius = 5))
+                grid.UpdateGrid(mine.position, False)
+                _mine_list.remove(mine)
+        for mine in _mine_list:
+            mine.draw()
+        return _mine_list
+    else:
+        return []
 
 def BallSpawner(_ball_list, _delta_time, _mouse_pos):
     global current_score, vfx_explosion, vfx_particle_explosion
@@ -334,6 +433,14 @@ def DisplayIntro():
     for ball_intro in ball_intro_list:
         ball_intro.update()
         ball_intro.draw_with_rotation()
+    setting = SpriteRenderer(
+        screen,
+        SETTING_ICON_PATH,
+        (SCREEN_WIDTH - 50, 50),
+        SETTING_ICON_SIZE,
+        0.05,
+        Anchor.MID_CENTER
+    )
     game_name_text = TextRenderer(
         screen,
         FONT_PATH, 
@@ -386,6 +493,7 @@ def DisplayIntro():
         ButtonType.QUIT
     )
     
+    setting.draw()
     game_name_text.update()
     start_title.update()
     credit_title.update()
@@ -430,7 +538,7 @@ def DisplayCredit():
     back_button.update()
 
 def DisplaySetting():
-    print('setting')
+    pass
 
 
 class UIState(Enum):
@@ -462,7 +570,7 @@ class Gameplay():
         self.game_active = False
         self.state = UIState.INTRO
         self.Awake()
-        self.Run()
+        self.Update()
     
     def UpdateState(self, new_state):
         if self.state == new_state:
@@ -483,8 +591,8 @@ class Gameplay():
     def Exit(self):
         self.run = False
     
-    def Run(self):
-        global ball_list, particles, screen, current_score
+    def Update(self):
+        global ball_list, mine_list, particles, screen, current_score
         GetBallsForIntro(5)
         while self.run:
             self.mouse_pos = (0, 0)
@@ -494,21 +602,35 @@ class Gameplay():
                     self.Exit()
                 if self.game_active:
                     if event.type == ball_spawn_timer:
-                        for _ in range(BALL_EACH_TURN):
+                        for i in range(BALL_EACH_TURN):
                             spawn_pos = grid.GetEmptySlot()
                             if spawn_pos == (-1, -1):
                                 continue
                             grid.UpdateGrid(spawn_pos, True)
-                            ball = Ball(
-                                    screen = screen,
-                                    image_path = BALL_PATH, 
-                                    position = spawn_pos, 
-                                    scale = BALL_SIZE, 
-                                    scale_factor = 0.25, 
-                                    anchor = Anchor.MID_CENTER,
-                                    start_life_time = BALL_LIFE_TIME / 1000.0
-                                )
-                            ball_list.append(ball)
+                            r = random.randint(0, 1)
+                            if r == 0:
+                                ball = Ball(
+                                        screen = screen,
+                                        image_path = BALL_PATH, 
+                                        position = spawn_pos, 
+                                        scale = BALL_SIZE, 
+                                        scale_factor = 0.25, 
+                                        anchor = Anchor.MID_CENTER,
+                                        start_life_time = BALL_LIFE_TIME / 1000.0
+                                    )
+                                ball_list.append(ball)
+                            elif r == 1:
+                                mine = Mine(
+                                        screen = screen,
+                                        image_path = MINE_PATH, 
+                                        position = spawn_pos, 
+                                        scale = MINE_SIZE, 
+                                        scale_factor = 0.3, 
+                                        anchor = Anchor.MID_CENTER,
+                                        start_life_time = BALL_LIFE_TIME / 1000.0
+                                    )
+                                mine_list.append(mine)
+                                
                 if event.type == pg.MOUSEBUTTONDOWN:
                     mouse_presses = pg.mouse.get_pressed()
                     if mouse_presses[0]:
@@ -586,6 +708,7 @@ class Gameplay():
                 # deltaTime in seconds.
                 screen.blit(ground_surface, ground_position)
                 ball_list = BallSpawner(ball_list, self.delta_time, self.mouse_pos)
+                mine_list = MineSpawner(mine_list, self.delta_time, self.mouse_pos)
                 DisplayScore(current_score)
                 cursor.update(pg.mouse.get_pos())
                 grid.update()
@@ -593,6 +716,10 @@ class Gameplay():
                 vfx_explosion.update(delta_time=self.delta_time)
                 vfx_particle_explosion.update(delta_time=self.delta_time)
                 vfx_particle_miss.update(delta_time=self.delta_time)
+                
+                vfx_mine_explosion.update(delta_time=self.delta_time)
+                vfx_mine_particle_explosion.update(delta_time=self.delta_time)
+                vfx_mine_particle_miss.update(delta_time=self.delta_time)
                 
                 for particle in vfx_explosion.particles:
                     particle.shape.alpha = particlepy.math.fade_alpha(particle=particle,
@@ -620,8 +747,36 @@ class Gameplay():
                 vfx_particle_explosion.render(surface=screen)
                 vfx_particle_miss.render(surface=screen)
                 
+                
+                for particle in vfx_mine_explosion.particles:
+                    particle.shape.alpha = particlepy.math.fade_alpha(particle=particle,
+                                                                    alpha = 0,
+                                                                    progress=particle.inverted_progress)
+                for particle in vfx_mine_particle_explosion.particles:
+                    particle.shape.alpha = particlepy.math.fade_alpha(particle=particle,
+                                                                    alpha = 0,
+                                                                    progress=particle.inverted_progress)
+                for particle in vfx_mine_particle_miss.particles:
+                    particle.shape.alpha = particlepy.math.fade_alpha(particle=particle,
+                                                                    alpha = 0,
+                                                                    progress=particle.inverted_progress)
+
+                vfx_mine_explosion.make_shape()
+                vfx_mine_particle_explosion.make_shape()
+                vfx_mine_particle_miss.make_shape()
+                
+                for particle in vfx_mine_explosion.particles:
+                    particle.shape.angle += 5
+                for particle in vfx_mine_particle_explosion.particles:
+                    particle.shape.angle += 5
+                    
+                vfx_mine_explosion.render(surface=screen)
+                vfx_mine_particle_explosion.render(surface=screen)
+                vfx_mine_particle_miss.render(surface=screen)
+                
             else:
                 ball_list.clear()
+                mine_list.clear()
                 screen.blit(ground_surface, ground_position)
                 if self.state == UIState.INTRO:
                     DisplayIntro()
@@ -643,4 +798,4 @@ class Gameplay():
 
 Game = Gameplay()
 Game.Awake()
-Game.Run()
+Game.Update()

@@ -26,12 +26,20 @@ DEVELOPERS_NAME = [
 DEVELOPERS_NAME_TEXT_SIZE = 50
 DEVELOPERS_NAME_TEXT_COLOR  = (255, 255, 255)
 
+VOLUME_TEXT = "Volume : "
+VOLUME_TEXT_SIZE = 80
+
+ON_TEXT = "ON"
+TOGGLE_TEXT_SIZE = 80
+OFF_TEXT = "OFF"
+
 BACK_TEXT = "Back"
 BACK_TEXT_SIZE = 80
 
 BLACK_COLOR = (0, 0, 0, 255)
 WHITE_COLOR = (255, 255, 255, 255)
 BALL_RAW_COLOR = [BLACK_COLOR, WHITE_COLOR]
+MINE_RAW_COLOR = [BLACK_COLOR, (255, 153, 0), (255, 51, 0), (255, 80, 80)]
 
 ROTATE_FACTOR = [-1, 1]
 
@@ -48,6 +56,9 @@ CURSOR_SIZE = (285, 285)
 BACKGROUND_PATH = '../_assets/Backgrounds/Background 6.png'
 BACKGROUND_WIDTH = 1300
 BACKGROUND_HEIGHT = 866
+
+SETTING_ICON_PATH = '../_assets/Setting/Setting.png'
+SETTING_ICON_SIZE = (2048, 2048)
 
 GRID_PATH = '../_assets/Backgrounds/Grid_4x2.png'
 GRID_WIDTH = 878
@@ -68,10 +79,15 @@ SOUND_THEME = '../_sounds/Theme.wav'
 BEGIN_THEME = '../_sounds/Begin.wav'
 SOUND_CLICK_THE_BALL = '../_sounds/Click_the_ball.wav'
 SOUND_CLICK_NOTHING = '../_sounds/Click_nothing.wav'
+SOUND_CLICK_THE_MINE = '../_sounds/Bomb.wav'
 
 BALL_PATH = '../_assets/Enemies/Balls/ball.png'
+MINE_PATH = '../_assets/Enemies/Mines/mine.png'
+MINE_WIDTH = 512
+MINE_HEIGHT = 512
 BALL_WIDTH = 500
 BALL_HEIGHT = 500
+MINE_SIZE = (MINE_WIDTH, MINE_HEIGHT)
 BALL_SIZE = (BALL_WIDTH, BALL_HEIGHT)
 
 # Current score : (ball each turn, ball life time)
