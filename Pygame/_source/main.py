@@ -229,6 +229,7 @@ def OnStartButtonClick():
     Game.Start()
 
 def OnCreditButtonClick():
+    Game.ShowCredit()
     Game.UpdateState(UIState.CREDIT)
 
 def OnQuitButtonClick():
@@ -426,13 +427,68 @@ def GetBallsForIntro(num, min_size = 0.1, max_size = 0.3):
             anchor = Anchor.MID_CENTER
         )
         ball_intro_list.append(ball)
-        
 
-def DisplayIntro():
-    global ball_intro_list
-    for ball_intro in ball_intro_list:
-        ball_intro.update()
-        ball_intro.draw_with_rotation()
+setting = SpriteRenderer(
+    screen,
+    SETTING_ICON_PATH,
+    (SCREEN_WIDTH - 50, 50),
+    SETTING_ICON_SIZE,
+    0.05,
+    Anchor.MID_CENTER
+)
+game_name_text = TextRenderer(
+    screen,
+    FONT_PATH, 
+    (SCREEN_WIDTH / 2, 100), 
+    GAME_NAME, 
+    GAME_NAME_TEXT_SIZE, 
+    GAME_NAME_COLOR, 
+    Anchor.MID_CENTER,
+    True,
+    GAME_NAME_COLOR_OUTLINE, 
+    4
+)
+start_title = ButtonTextRenderer(
+    screen,
+    FONT_PATH, 
+    (SCREEN_WIDTH / 2, 350), 
+    START_TITLE, 
+    TITLE_TEXT_SIZE, 
+    TITLE_COLOR, 
+    Anchor.MID_CENTER,
+    True,
+    GAME_NAME_COLOR_OUTLINE, 
+    2,
+    ButtonType.START
+)
+credit_title = ButtonTextRenderer(
+    screen,
+    FONT_PATH, 
+    (SCREEN_WIDTH / 2, 450), 
+    CREDIT_TITLE, 
+    TITLE_TEXT_SIZE, 
+    TITLE_COLOR, 
+    Anchor.MID_CENTER,
+    True,
+    GAME_NAME_COLOR_OUTLINE, 
+    2,
+    ButtonType.CREDIT
+)
+quit_title = ButtonTextRenderer(
+    screen,
+    FONT_PATH, 
+    (SCREEN_WIDTH / 2, 550), 
+    QUIT_TITLE, 
+    TITLE_TEXT_SIZE, 
+    TITLE_COLOR, 
+    Anchor.MID_CENTER,
+    True,
+    GAME_NAME_COLOR_OUTLINE, 
+    2,
+    ButtonType.QUIT
+)
+def DrawIntro():
+    global setting, game_name_text, start_title, credit_title, quit_title
     setting = SpriteRenderer(
         screen,
         SETTING_ICON_PATH,
@@ -492,6 +548,13 @@ def DisplayIntro():
         2,
         ButtonType.QUIT
     )
+def DisplayIntro():
+    # global ball_intro_list
+    # for ball_intro in ball_intro_list:
+    #     ball_intro.update()
+    #     ball_intro.draw_with_rotation()
+    global setting, game_name_text, start_title, credit_title, quit_title
+    
     
     setting.draw()
     game_name_text.update()
@@ -499,8 +562,39 @@ def DisplayIntro():
     credit_title.update()
     quit_title.update()
 
-def DisplayCredit():
-    developers_name = []
+developers_name = []
+base_position_x = SCREEN_WIDTH / 2
+base_position_y = 100
+for i in range(4):
+    position = (base_position_x, base_position_y + i * 100)
+    name = TextRenderer(
+        screen,
+        FONT_PATH,
+        position,
+        DEVELOPERS_NAME[i],
+        DEVELOPERS_NAME_TEXT_SIZE,
+        DEVELOPERS_NAME_TEXT_COLOR,
+        Anchor.MID_CENTER,
+        True,
+        (0, 0, 0),
+        2
+    )
+    developers_name.append(name)
+back_button = ButtonTextRenderer(
+    screen,
+    FONT_PATH,
+    (base_position_x, base_position_y + 5 * 100),
+    BACK_TEXT,
+    BACK_TEXT_SIZE,
+    (255, 255, 255),
+    Anchor.MID_CENTER,
+    True,
+    (0, 0, 0),
+    2,
+    ButtonType.BACK
+)
+def DrawCredit():
+    global back_button, developers_name
     base_position_x = SCREEN_WIDTH / 2
     base_position_y = 100
     for i in range(4):
@@ -518,10 +612,6 @@ def DisplayCredit():
             2
         )
         developers_name.append(name)
-        
-    for name in developers_name:
-        name.update()
-        
     back_button = ButtonTextRenderer(
         screen,
         FONT_PATH,
@@ -535,6 +625,10 @@ def DisplayCredit():
         2,
         ButtonType.BACK
     )
+def DisplayCredit():
+    global developers_name, back_button
+    for name in developers_name:
+        name.update()
     back_button.update()
 
 def DisplaySetting():
@@ -570,12 +664,16 @@ class Gameplay():
         self.game_active = False
         self.state = UIState.INTRO
         self.Awake()
+        DrawIntro()
         self.Update()
     
     def UpdateState(self, new_state):
         if self.state == new_state:
             return
         self.state = new_state
+        
+    def ShowCredit(self):
+        DrawCredit()
     
     def Awake(self):
         pg.mixer.music.load(BEGIN_THEME)
@@ -607,19 +705,8 @@ class Gameplay():
                             if spawn_pos == (-1, -1):
                                 continue
                             grid.UpdateGrid(spawn_pos, True)
-                            r = random.randint(0, 1)
+                            r = random.randint(0, 3)
                             if r == 0:
-                                ball = Ball(
-                                        screen = screen,
-                                        image_path = BALL_PATH, 
-                                        position = spawn_pos, 
-                                        scale = BALL_SIZE, 
-                                        scale_factor = 0.25, 
-                                        anchor = Anchor.MID_CENTER,
-                                        start_life_time = BALL_LIFE_TIME / 1000.0
-                                    )
-                                ball_list.append(ball)
-                            elif r == 1:
                                 mine = Mine(
                                         screen = screen,
                                         image_path = MINE_PATH, 
@@ -630,6 +717,18 @@ class Gameplay():
                                         start_life_time = BALL_LIFE_TIME / 1000.0
                                     )
                                 mine_list.append(mine)
+                            else:
+                                ball = Ball(
+                                        screen = screen,
+                                        image_path = BALL_PATH, 
+                                        position = spawn_pos, 
+                                        scale = BALL_SIZE, 
+                                        scale_factor = 0.25, 
+                                        anchor = Anchor.MID_CENTER,
+                                        start_life_time = BALL_LIFE_TIME / 1000.0
+                                    )
+                                ball_list.append(ball)
+                                
                                 
                 if event.type == pg.MOUSEBUTTONDOWN:
                     mouse_presses = pg.mouse.get_pressed()
